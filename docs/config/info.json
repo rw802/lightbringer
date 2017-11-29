@@ -1,0 +1,11 @@
+{
+    "alphavantage" : {
+        "key"   : "yourstuff",
+        "email" : "yourstuff"
+    }
+    ,
+    "pushover" : {
+        "key"   : "yourstuff",
+        "token" : "yourstuff"
+    }
+}
