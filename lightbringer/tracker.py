@@ -32,23 +32,26 @@ COLOR_GREEN = 84
 COLOR_RED = 197
 COLOR_GREY = 241
 
-# global vars 
+# global vars
 g_period_map = {
-        '1min' : 60,
-        '5min' : 300,
-        '15min' : 900,
-        '30min' : 1800,
-        '60min' : 3600
+    '1min': 60,
+        '5min': 300,
+        '15min': 900,
+        '30min': 1800,
+        '60min': 3600
 }
 g_periods = []
 g_symbols = []
-g_columns = ['time', 'close', 'diffvol', 'ema', 'rsi']
+g_columns = ['time', 'close', 'diffvol', 'ema', 'rsi', 'range']
 g_mainwin = None
 g_panels = {}
 
 # panel obj
+
+
 class Cell(object):
-    def __init__(self, win = None):
+
+    def __init__(self, win=None):
         self.win = win
         self.val = 'N/A'
         self.row = -1
@@ -60,15 +63,16 @@ class Cell(object):
 
 # std obj
 class StdOutWrapper(object):
+
     def __init__(self):
         self.text = ""
 
-    def write(self,txt):
+    def write(self, txt):
         self.text += txt
         self.text = '\n'.join(self.text.split('\n')[-30:])
 
-    def get_text(self,beg=None,end=None):
-        return '\n'.join(self.text.split('\n')[beg:end])    
+    def get_text(self, beg=None, end=None):
+        return '\n'.join(self.text.split('\n')[beg:end])
 
     def save(self):
         with open('log.txt', 'w') as f:
@@ -78,28 +82,32 @@ class StdOutWrapper(object):
 # apsche stuff
 executors = {'default': {'type': 'threadpool', 'max_workers': 30},
              'processpool': ProcessPoolExecutor(max_workers=5)
-            }
+             }
 job_defaults = {'coalesce': True,
                 'max_instances': 3
-               }
+                }
 g_scheduler = BackgroundScheduler()
-g_scheduler.configure(executors=executors, job_defaults=job_defaults,timezone=utc)
+g_scheduler.configure(
+    executors=executors, job_defaults=job_defaults, timezone=utc)
 
 # Alpha Advantage handlers
-g_data = {}# global data cache
+g_data = {}  # global data cache
 g_ti = None
 g_sp = None
 g_ts = None
 MAX_API_RETRIES = 3
 
 
-# ti params 
-ema_fast_period = 4 
-ema_slow_period = 8 
+# ti params
+ema_fast_period = 4
+ema_slow_period = 8
 
-# print the last operation to console line    
+# print the last operation to console line
+
+
 def print_to_console(func, msg=None):
     logmsg = msg if msg else func.__name__
+
     @wraps(func)
     def wrapper(*args, **kwargs):
         ret = func(*args, **kwargs)
@@ -113,18 +121,21 @@ def print_to_console(func, msg=None):
 
 
 @print_to_console
-def setup_av(path='../config/myinfo.json'):
+def setup_av(path='../docs/config/my_info_2.json'):
     global g_ts, g_ti, g_sp
 
-    # Read API infos from config 
-    try: 
+    # Read API infos from config
+    try:
         with open(path, 'r') as f:
             info = json.load(f)
             ALPHAVANTAGE_API_TOKEN = info['alphavantage']['key']
 
-            g_ts = TimeSeries(key=ALPHAVANTAGE_API_TOKEN, output_format='pandas') 
-            g_ti = TechIndicators(key=ALPHAVANTAGE_API_TOKEN, output_format='pandas') 
-            g_sp = SectorPerformances(key=ALPHAVANTAGE_API_TOKEN, output_format='pandas') 
+            g_ts = TimeSeries(
+                key=ALPHAVANTAGE_API_TOKEN, output_format='pandas')
+            g_ti = TechIndicators(
+                key=ALPHAVANTAGE_API_TOKEN, output_format='pandas')
+            g_sp = SectorPerformances(
+                key=ALPHAVANTAGE_API_TOKEN, output_format='pandas')
 
     except Exception as e:
         print ('Unable to setup Alpha Vantage')
@@ -135,7 +146,7 @@ def setup_av(path='../config/myinfo.json'):
 def update_symbol(symbol, period):
     """ Update a symbol
 
-    Updating symbol consists of fetching data from AV and 
+    Updating symbol consists of fetching data from AV and
     refreshing the corresponding UI tables
 
     """
@@ -154,25 +165,26 @@ def fetch_symbol(symbol, period):
     """
     global g_data, g_ts, g_ti, g_sp
     # return close and color
+
     def cal_close(ts):
         d = ts[0].tail(2)['close']
         ret0 = str(d[-1])
         ret1 = COLOR_DEFAULT
-        
+
         if d[-1] > d[-2]:
-            ret1 =  COLOR_GREEN
+            ret1 = COLOR_GREEN
         elif d[-1] < d[-2]:
-            ret1 =  COLOR_RED
+            ret1 = COLOR_RED
         return ret0, ret1
 
     # return time
     def cal_time(ts):
-        return  ts[1]['3. Last Refreshed'][-8:-3], COLOR_DEFAULT
+        return ts[1]['3. Last Refreshed'][-8:-3], COLOR_DEFAULT
 
     # return volume difference from 20 avg and color
     def cal_vol(ts):
         d = ts[0].tail(21)['volume']
-        v = d[-1] 
+        v = d[-1]
         avgv = d[-21:-1].mean()
         val = v - avgv
         ret0 = humanfriendly.format_size(v)
@@ -189,21 +201,20 @@ def fetch_symbol(symbol, period):
         ret1 = COLOR_DEFAULT
 
         if v > 1.3 * avgv:
-            ret1 =  COLOR_GREEN
+            ret1 = COLOR_GREEN
         elif v < 0.7 * avgv:
-            ret1 =  COLOR_RED
+            ret1 = COLOR_RED
         return ret0, ret1
-
 
     def cal_rsi(feed):
         d = feed[0].tail(2)['RSI']
         ret0 = str(d[-1])
         ret1 = COLOR_DEFAULT
-        
+
         if d[-1] > d[-2]:
-            ret1 =  COLOR_GREEN
+            ret1 = COLOR_GREEN
         elif d[-1] < d[-2]:
-            ret1 =  COLOR_RED
+            ret1 = COLOR_RED
         return ret0, ret1
 
     def two_seg_compare(f4, f8):
@@ -221,7 +232,7 @@ def fetch_symbol(symbol, period):
             return 'X', COLOR_RED
 
         d = 0
-        grades = { -2 : 215, -3 : 206, -4: 197, 2 : 76, 3 : 52, 4 : 47}
+        grades = {-2: 215, -3: 206, -4: 197, 2: 76, 3: 52, 4: 47}
         # uptreding
         if f4[-1] > f8[-1]:
             d += 2
@@ -241,31 +252,49 @@ def fetch_symbol(symbol, period):
 
         return 'N/A', COLOR_DEFAULT
 
-
     def cal_ema(feed4, feed8):
         f4 = feed4[0].tail(2)['EMA']
         f8 = feed8[0].tail(2)['EMA']
 
         return two_seg_compare(f4, f8)
 
-
     # def cal_macd(feed):
     #     macd = feed[0].tail(1)['MACD']
     #     macd_sig = feed[0].tail(1)['MACD_Signal']
-         
+
     #     return two_seg_compare(macd, macd_sig)
-        
-        # 'time'      :None,
-        # 'close'     :None,
-        # 'diffvol'   :None,
-        # 'ema'       :None,
-        # 'macd'      :None,
-        # 'rsi'       :None,
-        # 'cci'       :None,
-        # 'macd'      :None
+
+    def cal_range(ts, window=8):
+        """
+        return the low and high in given window
+        """
+        vlow = ts[0].tail(window)['low']
+        vhigh = ts[0].tail(window)['high']
+        ret0 = ''
+        ret1 = COLOR_DEFAULT
+
+        low = min(x for x in vlow)
+        high = max(x for x in vhigh)
+        ret0 += str(low) + '/' + str(high)
+
+        return ret0, ret1
+
+# 'time'  :None,
+# 'close' :None,
+# 'diffvol'   :None,
+# 'ema'   :None,
+# 'macd'  :None,
+# 'rsi'   :None,
+# 'cci'   :None,
+# 'macd'  :None
     try:
-        ts = g_ts.get_intraday(symbol=symbol, interval=period)
         handle = g_data[symbol][period]
+
+        if period == 'daily':
+            ts = g_ts.get_daily(symbol=symbol)
+        else:
+            ts = g_ts.get_intraday(symbol=symbol, interval=period)
+
         c = handle['close']
         if c:
             c.val, c.color = cal_close(ts)
@@ -275,6 +304,10 @@ def fetch_symbol(symbol, period):
         c = handle['time']
         if c:
             c.val, c.color = cal_time(ts)
+        c = handle['range']
+        if c:
+            c.val, c.color = cal_range(ts)
+
         c = handle['rsi']
         if c:
             feed = g_ti.get_rsi(symbol=symbol, interval=period)
@@ -287,7 +320,7 @@ def fetch_symbol(symbol, period):
         # c = handle['macd']
         # if c:
         #     feed = g_ti.get_macd(symbol=symbol, interval=period)
-        #     c.val, c.color = cal_macd(feed) 
+        #     c.val, c.color = cal_macd(feed)
 
         return True
 
@@ -304,6 +337,7 @@ def fetch_symbol(symbol, period):
         logging.warning("[{}] is not updated.".format(symbol))
         return False
 
+
 @print_to_console
 def update_ui_symbol(symbol, period=None):
     """ Update newly fetched data to UI
@@ -317,19 +351,19 @@ def update_ui_symbol(symbol, period=None):
 
     # update technical indicators from AV
     else:
-        handle = g_data[symbol][period]    
+        handle = g_data[symbol][period]
         for each in g_columns:
             c = handle[each]
             w = c.win
             w.addstr(c.row, c.col, '          ')
             w.addstr(c.row, c.col, c.val, curses.color_pair(c.color))
             w.refresh()
-    
+
 
 def setup_panels(win):
     """ Condigure panel for each symbol
 
-    This function adds an item that keys a symbol (str),values  a panel (obj), 
+    This function adds an item that keys a symbol (str),values  a panel (obj),
     and field (str) - coordinates (int tuple) to g_panels
 
     """
@@ -337,7 +371,7 @@ def setup_panels(win):
     global g_symbols, g_panels, g_periods
 
     # number of symbols + 2 for boarders + 1 for period
-    subwin_height =  len(g_periods) + 3
+    subwin_height = len(g_periods) + 3
     # 5 for console display
     x0, y0 = 5, 0
     sx, sy = subwin_height, 120
@@ -371,7 +405,9 @@ def setup_panels(win):
                 cell.col = col
                 cell.h = 1
                 cell.w = 10
-                col += 10 
+                if each == 'range':
+                    cell.w = 16
+                col += cell.w
 
             update_ui_symbol(symbol, period)
             row += 1
@@ -384,13 +420,13 @@ def setup_panels(win):
 def setup_mainwin(win):
     win.erase()
 
-    win.move(1,1)
+    win.move(1, 1)
     win.addstr("Team kotrt Monitor")
-    win.move(2,1)
+    win.move(2, 1)
     win.addstr('Console Output: ')
     win.refresh()
 
-    
+
 def mainloop(win):
     """ main loop of the app
 
@@ -418,14 +454,14 @@ def mainloop(win):
     jobs = []
     for period in g_periods:
         for symbol in g_symbols:
-            id = symbol+'_'+period 
+            id = symbol + '_' + period
             job = g_scheduler.add_job(
-                    func=update_symbol,
+                func=update_symbol,
                     trigger='interval',
                     args=[symbol, period],
-                    seconds=int(g_period_map[period]/3),
+                    seconds=int(g_period_map[period] / 3),
                     id=id
-                    )
+            )
             c += 1
     # start worker
     g_scheduler.start()
@@ -456,7 +492,7 @@ def mainloop(win):
 
 
 @print_to_console
-def load_config(p = 'layout.json'):
+def load_config(p='../docs/config/tracker_layout.json'):
     global g_symbols, g_periods, g_data
 
     with open(p, 'r') as f:
@@ -467,7 +503,7 @@ def load_config(p = 'layout.json'):
     for symbol in g_symbols:
         g_data[symbol] = {}
         for period in g_periods:
-            g_data[symbol][period] = { x : Cell() for x in g_columns }
+            g_data[symbol][period] = {x: Cell() for x in g_columns}
 
 
 def setup_color_pairs():
@@ -481,7 +517,7 @@ def startup():
     try:
         # Initialize curses
         stdscr = curses.initscr()
-	
+
         curses.start_color()
         curses.use_default_colors()
         # color setup
@@ -511,14 +547,14 @@ def startup():
         curses.endwin()
         traceback.print_exc()           # Print the exception
 
-if __name__=='__main__':
+if __name__ == '__main__':
 
     # setup_av()
     # print (g_ts.get_intraday(symbol='AMD', interval='1min'))
     mystdout = StdOutWrapper()
     sys.stdout = mystdout
     sys.stderr = mystdout
-    
+
     startup()
 
     sys.stdout = sys.__stdout__

@@ -1,0 +1,7 @@
+{
+    "symbols" : ["TWLO", "RIOT", "QD", "XNET", "JD"] 
+    ,
+    "windows" : ["1min", "5min", "15min", "60min", "daily"]
+    ,
+    "indicators" : ["close", "volume", "candle", "ema", "ma", "rsi", "macd"]
+}
