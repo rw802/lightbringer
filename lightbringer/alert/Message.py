@@ -2,7 +2,7 @@ from slackclient import SlackClient
 
 class Message():
     def __init__(self):
-        slack_token = 'xoxp-257787694487-256522599297-271103305072-997e95878b04cf715b010d45af2abe78'
+        slack_token = 'xoxp-257787694487-256522599297-271103305072-997e95878b04cf715b010d45af2abe79'
         self.slack = SlackClient(slack_token)
         
     def sendSlack(self, msg, channel, bullish = True):
